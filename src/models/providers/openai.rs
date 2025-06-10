@@ -1,8 +1,15 @@
 use async_openai::{
-    config::{self, Config, OpenAIConfig}, types::{ChatCompletionRequestAssistantMessage, ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage, CreateChatCompletionRequestArgs, CreateCompletionRequestArgs, Role}, Client
+    Client,
+    config::{self, Config, OpenAIConfig},
+    types::{
+        ChatCompletionRequestAssistantMessage, ChatCompletionRequestMessage,
+        ChatCompletionRequestSystemMessage, CreateChatCompletionRequestArgs,
+        CreateCompletionRequestArgs, Role,
+    },
 };
 
 use anyhow::{Result, anyhow};
+use async_trait::async_trait;
 
 use crate::models::llm_provider::{ChatMessage, LlmProvider, LlmRequest, LlmResponse};
 
@@ -28,7 +35,7 @@ impl OpenAIProvider {
                 },
             )),
             "user" => Ok(ChatCompletionRequestMessage::User(
-                async_openai::types::ChatCompletionRequestUserMessage::from(message.content)
+                async_openai::types::ChatCompletionRequestUserMessage::from(message.content),
             )),
             "assistant" => Ok(ChatCompletionRequestMessage::Assistant(
                 ChatCompletionRequestAssistantMessage {
@@ -40,9 +47,7 @@ impl OpenAIProvider {
                     function_call: todo!(),
                 },
             )),
-            "tool" => {
-                Err(anyhow!("Tool role not supported in this implementation"))
-            },
+            "tool" => Err(anyhow!("Tool role not supported in this implementation")),
             "function" => Err(anyhow!(
                 "Function role not supported in this implementation"
             )),
@@ -51,23 +56,22 @@ impl OpenAIProvider {
         }
     }
 }
-
+#[async_trait]
 impl LlmProvider for OpenAIProvider {
     async fn send_request(&self, request: LlmRequest) -> Result<LlmResponse> {
         let mut openai_messages = Vec::new();
         for message in request.messages {
             openai_messages.push(self.convert_message(message)?);
-        };
+        }
 
-        let mut req = CreateChatCompletionRequestArgs::default()
-            .model(request.model)
-            .messages(openai_messages);
+        let mut req = CreateChatCompletionRequestArgs::default();
+        req.model(request.model).messages(openai_messages);
 
         if let Some(t) = request.temperature {
-            req = req.temperature(t);
+            req.temperature(t);
         }
         if let Some(mt) = request.max_tokens {
-            req = req.max_tokens(mt as u16);
+            req.max_tokens(mt as u16);
         }
 
         let response = self.client.chat().create(req.build()?).await?;
@@ -86,13 +90,12 @@ impl LlmProvider for OpenAIProvider {
         })
     }
 
-    #[must_use]
     #[allow(
         elided_named_lifetimes,
         clippy::type_complexity,
         clippy::type_repetition_in_bounds
     )]
-    fn stram_response<'life0, 'async_trait>(
+    fn stream_response<'life0, 'async_trait>(
         &'life0 self,
         request: LlmRequest,
     ) -> ::core::pin::Pin<
@@ -109,7 +112,7 @@ impl LlmProvider for OpenAIProvider {
         todo!()
     }
 
-    fn supports_streamming(&self) -> bool {
+    fn supports_streaming(&self) -> bool {
         todo!()
     }
 

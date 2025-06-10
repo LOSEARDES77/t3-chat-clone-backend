@@ -131,10 +131,7 @@ dependencies = [
  "chrono",
  "diesel",
  "dotenvy",
- "proc-macro2",
- "quote",
  "serde",
- "syn",
 ]
 
 [[package]]
