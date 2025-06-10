@@ -1,4 +1,5 @@
 use anyhow::Result;
+use futures::stream::BoxStream;
 use rocket::request;
 use serde::{Deserialize, Serialize};
 
@@ -32,9 +33,11 @@ pub struct LlmResponse {
 pub trait LlmProvider: Send + Sync {
     async fn send_request(&self, request: LlmRequest) -> Result<LlmResponse>;
 
-    async fn stream_response(&self, request: LlmRequest) -> Result<String>; // TODO: Figure out streaming
+    async fn stream_response(&self, request: LlmRequest) -> Result<BoxStream<String>>; // TODO: Figure out streaming
 
     fn supports_streaming(&self) -> bool; // MAYBE: Split streamming to a sepparate trait i.e. StreammingLlmProvider?
 
-    fn get_model_list(&self) -> Vec<String>;
+    async fn get_model_list(&self) -> Result<Vec<String>>;
+
+    fn get_provider_name(&self) -> &'static str;
 }

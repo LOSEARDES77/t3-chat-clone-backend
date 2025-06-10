@@ -7,6 +7,7 @@ use async_openai::{
         CreateCompletionRequestArgs, Role,
     },
 };
+use futures::{TryStreamExt, stream::BoxStream};
 
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
@@ -90,33 +91,48 @@ impl LlmProvider for OpenAIProvider {
         })
     }
 
-    #[allow(
-        elided_named_lifetimes,
-        clippy::type_complexity,
-        clippy::type_repetition_in_bounds
-    )]
-    fn stream_response<'life0, 'async_trait>(
-        &'life0 self,
-        request: LlmRequest,
-    ) -> ::core::pin::Pin<
-        Box<
-            dyn ::core::future::Future<Output = Result<String>>
-                + ::core::marker::Send
-                + 'async_trait,
-        >,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
-    {
-        todo!()
+    async fn stream_response(&self, request: LlmRequest) -> Result<BoxStream<String>> {
+        let mut openai_messages = Vec::new();
+        for message in request.messages {
+            openai_messages.push(self.convert_message(message)?);
+        }
+
+        let mut req = CreateChatCompletionRequestArgs::default();
+        req.model(request.model).messages(openai_messages);
+
+        if let Some(t) = request.temperature {
+            req.temperature(t);
+        }
+        if let Some(mt) = request.max_tokens {
+            req.max_tokens(mt as u16);
+        }
+
+        let stream = self.client.chat().create_stream(req.build()?).await?;
+        todo!("Implement streaming response handling");
+        // let string_stream = stream();
+
+        // Ok(string_stream)
     }
 
     fn supports_streaming(&self) -> bool {
         todo!()
     }
 
-    fn get_model_list(&self) -> Vec<String> {
-        todo!()
+    async fn get_model_list(&self) -> Result<Vec<String>> {
+        let models = self
+            .client
+            .models()
+            .list()
+            .await?
+            .data
+            .into_iter()
+            .map(|model| model.id)
+            .collect();
+
+        Ok(models)
+    }
+
+    fn get_provider_name(&self) -> &'static str {
+        "OpenAI"
     }
 }

@@ -1,14 +1,11 @@
 #[macro_use]
 extern crate rocket;
 
-mod models;
-
-#[get("/")]
-fn index() -> &'static str {
-    "Hello, world!"
-}
+mod api;
+mod auth;
+pub mod models;
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/", routes![index])
+    rocket::build().mount("/", routes![api::models])
 }
